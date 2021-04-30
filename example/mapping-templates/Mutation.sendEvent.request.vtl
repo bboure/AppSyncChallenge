@@ -1,0 +1,20 @@
+#set($detail={"message": "${ctx.args.message}"})
+#set($event={
+  "DetailType": "AppSyncChallenge",
+  "Source": "AppSync",
+  "Detail": $util.toJson($detail)
+})
+{
+  "version": "2018-05-29",
+  "method": "POST",
+  "resourcePath": "/",
+  "params": {
+    "headers": {
+      "content-type": "application/x-amz-json-1.1",
+      "x-amz-target":"AWSEvents.PutEvents"
+    },
+    "body": {
+      "Entries": [$util.toJson($event)]
+    }
+  }
+}

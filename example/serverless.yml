@@ -1,0 +1,77 @@
+service: appsync-event-bridge
+
+plugins:
+  - serverless-iam-roles-per-function
+  - serverless-appsync-plugin
+  - serverless-esbuild
+
+provider:
+  name: aws
+  region: us-east-1
+  runtime: nodejs14.x
+  lambdaHashingVersion: 20201221
+  memorySize: 256
+  eventBridge:
+    useCloudFormation: true
+
+functions:
+  processEvent:
+    name: processAppSyncEvent
+    handler: src/processAppSyncEvent.handler
+    timeout: 30
+    environment:
+      APPSYNC_ENDPOINT: !GetAtt GraphQlApi.GraphQLUrl
+    iamRoleStatements:
+      - Effect: 'Allow'
+        Action:
+          - appsync:GraphQL
+        Resource:
+          - !Ref GraphQlApi
+          - !Join ['/', [!Ref GraphQlApi, '*']]
+    events:
+      # EventBridge trigger
+      - eventBridge:
+          pattern:
+            detail-type:
+              - AppSyncChallenge
+
+custom:
+  appSync:
+    name: appsync-event-bridge
+    authenticationType: API_KEY
+    additionalAuthenticationProviders:
+      # For the Lambda function
+      - authenticationType: AWS_IAM
+
+    logConfig:
+      level: ALL
+
+    mappingTemplates:
+      - dataSource: eventBridge
+        type: Mutation
+        field: sendEvent
+      - dataSource: none
+        type: Mutation
+        field: notify
+
+    dataSources:
+      - type: NONE
+        name: none
+        # HTTP resolver with AWS SigV4 auth
+      - type: HTTP
+        name: eventBridge
+        config:
+          # EventBridge endpoint
+          # Allow PutEvents Actions
+          endpoint: https://events.${self:provider.region}.amazonaws.com/
+          iamRoleStatements:
+            - Effect: 'Allow'
+              Action:
+                - 'events:PutEvents'
+              Resource: '*'
+          authorizationConfig:
+            authorizationType: AWS_IAM
+            awsIamConfig:
+              signingRegion:
+                'Ref': 'AWS::Region'
+              signingServiceName: events

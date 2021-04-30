@@ -1,0 +1,20 @@
+type Query {
+  dummy: String
+}
+
+type Mutation {
+  sendEvent(message: String!): String!
+  notify(message: String!): String
+  @aws_iam
+}
+
+type Subscription {
+  subscribe: String
+  @aws_subscribe(mutations: ["notify"])
+}
+
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}
